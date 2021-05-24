@@ -15,6 +15,10 @@ class ModbusMessanger : public QObject
 public:
     explicit ModbusMessanger(QObject *parent = nullptr);
 
+
+    static qint32 getNumberFromTheList(const ModbusList &list, const int &startindx);
+
+
     static MODBUSDIVIDED_UINT16 getDivided(const quint16 &value);
 
     static void addDivided2thelist(ModbusList &list, const quint16 &value);
@@ -26,15 +30,29 @@ public:
     static ModbusList getModbusReadRegisterMessageList(const quint8 &address, const quint16 &startaddress, const quint16 &len);
 
 
+    static bool isMessageLenGoodTCP(const ModbusList &list,  const qint32 &len, ModbusDecodedParams &messageparams);
+
 
     static bool isMessageListCrcGood(const ModbusList &list, const int &len);
 
-    static bool isFunctionCodeGood(const ModbusList &list);
-    static bool isFunctionCodeGoodExt(const ModbusList &list, bool &haserror);
+    static bool isFunctionCodeGood(const ModbusList &list, quint8 &functioncode);
 
-    static bool isThisMessageYoursLoop(const QByteArray &arr, quint8 &devaddress);
+    static bool isFunctionCodeGoodTcp(const ModbusList &list, quint8 &functioncode);
 
-    static bool isThisMessageYours(const QByteArray &arr, quint8 &devaddress);
+    static bool isFunctionCodeGoodExt(const ModbusList &list, const quint8 &modbusmode, quint8 &functioncode, bool &haserror);
+
+
+    static bool isThisMessageYoursLoop(const QByteArray &arr, ModbusDecodedParams &messageparams);//RTU
+
+
+    static bool isThisMessageYoursLoopRTU(const QByteArray &arr, ModbusDecodedParams &messageparams);//RTU
+
+    static bool isThisMessageYoursLoopTCP(const QByteArray &arr, ModbusDecodedParams &messageparams);
+
+    static bool isThisMessageYoursTCP(const ModbusList &list, ModbusDecodedParams &messageparams);
+
+
+    static bool isThisMessageYours(const ModbusList &list, ModbusDecodedParams &messageparams);
 
     static bool isReceivedMessageValid(const QByteArray &arr, const quint8 &address, quint8 &errorcode, ModbusAnswerList &out);
 
@@ -48,6 +66,8 @@ public:
     static QList<qint32> convertTwoRegisters2oneValue(const ModbusAnswerList &l);
 
     static QStringList convertTwoRegisters2oneValueStr(const ModbusAnswerList &l, const qreal &multiplier, const int &prec);
+
+    static ModbusRequestParams decodeRequestParams(const QByteArray &readArr);
 
 };
 
