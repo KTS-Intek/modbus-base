@@ -107,6 +107,46 @@ ModbusList ModbusMessanger::getModbusReadRegisterMessageList(const quint8 &addre
 
 //-------------------------------------------------------------------------
 
+QByteArray ModbusMessanger::getModbusReadRegisterMessageTCP(const quint8 &address, const quint16 &startaddress, const quint16 &len, const quint16 &transactionID, const qint16 &protocolId)
+{
+    const ModbusList list = getModbusReadRegisterMessageListTCP(address, startaddress, len, transactionID, protocolId);
+    return  ConvertAtype::uint8list2array(list, 0, list.length());//is ready to send message
+}
+
+//-------------------------------------------------------------------------
+
+ModbusList ModbusMessanger::getModbusReadRegisterMessageListTCP(const quint8 &address, const quint16 &startaddress, const quint16 &len, const quint16 &transactionID, const qint16 &protocolId)
+{
+
+    // [00][01]  [00][00] [00][06]  [FF]  [03] [23][0A]  [00][30]
+
+    /*  01   03   00 00   00 0D   84 0F
+     *  <addr>
+     *  <function>
+     *  <start address>
+     *  <len>
+     *  <crc>
+     */
+
+    ModbusList list;
+
+    addDivided2thelist(list, transactionID); //transaction ID
+    addDivided2thelist(list, protocolId); //protocol ID
+
+    addDivided2thelist(list, 6);
+
+    list.append(address);
+    list.append(MODBUS_READFUNCTION);
+
+
+    addDivided2thelist(list, startaddress);
+    addDivided2thelist(list, len);
+
+    return list;
+}
+
+//-------------------------------------------------------------------------
+
 bool ModbusMessanger::isMessageLenGoodTCP(const ModbusList &list, const qint32 &len, ModbusDecodedParams &messageparams)
 {
     //0-1b 2 bytes transactionid;
@@ -114,7 +154,7 @@ bool ModbusMessanger::isMessageLenGoodTCP(const ModbusList &list, const qint32 &
     //4-5b 2 bytes length field
     //6b   1 byte unit id, dev id
 
-    if(len < MODBUS_MIN_READLENTCP && len > MODBUS_MAXIMUM_DATA_LEN_APU)
+    if( (len < MODBUS_MIN_READLENTCP) && len > MODBUS_MAXIMUM_DATA_LEN_APU)
         return false;
 
     const qint32 v = getNumberFromTheList(list, 4) + 6;
@@ -222,6 +262,9 @@ bool ModbusMessanger::isThisMessageYoursTCP(const ModbusList &list, ModbusDecode
     //TCP mode
     //Unit identifier - devaddress, see Wikipedia Modbus
 
+    //[00][01] [00][00] [00][06]  [FF][03]  [23][0A] [00][18]
+
+
     messageparams.devaddress = messageparams.functionCode = 0xFF;
     const qint32 len = list.length(); //check len
 
@@ -245,10 +288,10 @@ bool ModbusMessanger::isThisMessageYoursTCP(const ModbusList &list, ModbusDecode
 
     if( len > 6){
         messageparams.devaddress = list.at(6);
-        if(result && (messageparams.devaddress < 1 || messageparams.devaddress > 247)){
-            result = false;
-            messageparams.decodeErr = MODBUS_DECODER_ERROR_ILLEGAL_DEVICEADDR;
-        }
+//        if( result && ( (messageparams.devaddress < 1) || messageparams.devaddress > 247)){
+//            result = false;
+//            messageparams.decodeErr = MODBUS_DECODER_ERROR_ILLEGAL_DEVICEADDR;
+//        }
     }
 
     messageparams.byteslist = list;
@@ -288,7 +331,7 @@ bool ModbusMessanger::isThisMessageYours(const ModbusList &list, ModbusDecodedPa
     if(!list.isEmpty()){
         messageparams.devaddress = list.at(0);
 
-        if(result && (messageparams.devaddress < 1 || messageparams.devaddress > 247)){
+        if(result && ( (messageparams.devaddress < 1) || messageparams.devaddress > 247)){
             result = false;
             messageparams.decodeErr = MODBUS_DECODER_ERROR_ILLEGAL_DEVICEADDR;
         }
@@ -368,7 +411,96 @@ bool ModbusMessanger::isReceivedMessageValidFastCheck(const ModbusList &list, co
 MessageValidatorResult ModbusMessanger::messageIsValidExt(const QByteArray &arr, const quint8 &address)
 {
     MessageValidatorResult decoderesult;
-    decoderesult.isValid = isReceivedMessageValid(arr, address, decoderesult.errCode, decoderesult.listMeterMess);
+    decoderesult.isValid = isReceivedMessageValid(arr, address, decoderesult.errCode, decoderesult.listMeterMessage);
+    return decoderesult;
+}
+
+//-------------------------------------------------------------------------
+
+bool ModbusMessanger::isReceivedMessageValidTCP(const QByteArray &arr, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId, quint8 &errorcode, ModbusAnswerList &out)
+{
+    return isReceivedMessageListValidTCP(ConvertAtype::convertArray2uint8list(arr), address, transactionID, protocolId, errorcode, out);
+}
+
+//-------------------------------------------------------------------------
+
+bool ModbusMessanger::isReceivedMessageListValidTCP(const ModbusList &list, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId, quint8 &errorcode, ModbusAnswerList &out)
+{
+    if(!isReceivedMessageValidFastCheckTCP(list, address, transactionID, protocolId, errorcode))
+        return false;
+
+    if(errorcode != MODBUS_ERROR_HAS_NO_ERRORS)
+        return true;//has an error
+
+    //direction: from Com'X 510  <00><01>  <00><00>  <00><17>  <FF><03><14>  <00><00><00><43><FF><FF><FF><FF><00><00><00><58><FF><FF><FF><FF><FF><FF><FF><FF>
+
+//    const int messsagelen = list.at(2);
+
+    const int len = list.length(); //check len
+    if(len <= MODBUS_MIN_READLENTCP)
+        return true;// very bad
+
+    const quint16 messsagelen = ((quint16)list.at(7) << 8 | list.at(8));
+
+
+    for(int i = 9, j = 0, imax = len ; i < imax && j < messsagelen; i += 2, j += 2){
+        const quint16 v = ((quint16)list.at(i) << 8 | list.at(i+1));
+        out.append(v);
+    }
+
+
+    return true;
+}
+
+//-------------------------------------------------------------------------
+
+bool ModbusMessanger::isReceivedMessageValidFastCheckTCP(const ModbusList &list, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId, quint8 &errorcode)
+{
+    //direction: from Com'X 510  <00><01>  <00><00>  <00><17>  <FF><03><14><00><00><00><43><FF><FF><FF><FF><00><00><00><58><FF><FF><FF><FF><FF><FF><FF><FF>
+    errorcode = MODBUS_ERROR_HAS_NO_ERRORS;
+
+    const int len = list.length(); //check len
+    if(len < MODBUS_MIN_READLENTCP)
+        return false;
+
+
+
+    bool haserror;
+    quint8 functionCode;
+    if(!isFunctionCodeGoodExt(list, MODBUS_MODE_TCP, functionCode, haserror))
+        return false;
+
+    if(address < 0xFF && address != list.at(0))
+        return false;//is not my address
+
+
+    if(haserror){
+//        errorcode = list.at(2);//error code where to find it in Modbus TCP
+        errorcode = MODBUS_ERROR_ILLEGAL_SLVEDEVFLR;
+        return true;
+    }
+
+    const quint16 tID = ((quint16)list.at(0) << 8 | list.at(1));
+    const quint16 pID = ((quint16)list.at(2) << 8 | list.at(3));
+    const quint16 messsagelen = ((quint16)list.at(4) << 8 | list.at(5));
+
+    if(tID != transactionID || pID != protocolId){
+        errorcode = MODBUS_ERROR_ILLEGAL_SLVEDEVFLR;
+        return false;
+    }
+
+    if(int(messsagelen+6) != len)
+        return false; //message to body ratio is 6 bytes
+
+    return true;
+}
+
+//-------------------------------------------------------------------------
+
+MessageValidatorResult ModbusMessanger::messageIsValidExtTCP(const QByteArray &arr, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId)
+{
+    MessageValidatorResult decoderesult;
+    decoderesult.isValid = isReceivedMessageValidTCP(arr, address, transactionID, protocolId, decoderesult.errCode, decoderesult.listMeterMessage);
     return decoderesult;
 }
 
@@ -386,9 +518,28 @@ QList<qint32> ModbusMessanger::convertTwoRegisters2oneValue(const ModbusAnswerLi
 
 //-------------------------------------------------------------------------
 
+QList<qint32> ModbusMessanger::convertTwoRegisters2oneValueBigEndian(const ModbusAnswerList &l)
+{
+    QList<qint32> out; // AB and CD  to ABCD
+    for(int i = 0, imax = l.size(); i < imax; i += 2){
+        const qint32 v = ((qint32)l.at(i) << 16 | l.at(i + 1));
+        out.append(v);
+    }
+    return out;
+}
+
+//-------------------------------------------------------------------------
+
 QStringList ModbusMessanger::convertTwoRegisters2oneValueStr(const ModbusAnswerList &l, const qreal &multiplier, const int &prec)
 {
-    const QList<qint32> values = convertTwoRegisters2oneValue(l);
+    return convertTwoRegisters2oneValueStrExt(l, multiplier, prec, false);
+}
+
+//-------------------------------------------------------------------------
+
+QStringList ModbusMessanger::convertTwoRegisters2oneValueStrExt(const ModbusAnswerList &l, const qreal &multiplier, const int &prec, const bool &isBigEndian)
+{
+    const QList<qint32> values = isBigEndian ? convertTwoRegisters2oneValueBigEndian(l) : convertTwoRegisters2oneValue(l);
 
     QStringList out;
     for(int i = 0, imax = values.size(); i < imax; i++){

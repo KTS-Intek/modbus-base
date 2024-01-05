@@ -60,7 +60,7 @@ struct MODBUSDIVIDED_UINT16
 
 struct MessageValidatorResult
 {
-    ModbusAnswerList listMeterMess;
+    ModbusAnswerList listMeterMessage;//listMeterMess
     quint8 errCode;//from a control byte
     QString errstr;
 

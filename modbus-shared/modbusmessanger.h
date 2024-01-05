@@ -30,6 +30,12 @@ public:
     static ModbusList getModbusReadRegisterMessageList(const quint8 &address, const quint16 &startaddress, const quint16 &len);
 
 
+    static QByteArray getModbusReadRegisterMessageTCP(const quint8 &address, const quint16 &startaddress, const quint16 &len, const quint16 &transactionID, const qint16 &protocolId);
+
+    static ModbusList getModbusReadRegisterMessageListTCP(const quint8 &address, const quint16 &startaddress, const quint16 &len, const quint16 &transactionID, const qint16 &protocolId);
+
+
+
     static bool isMessageLenGoodTCP(const ModbusList &list,  const qint32 &len, ModbusDecodedParams &messageparams);
 
 
@@ -63,9 +69,22 @@ public:
     static MessageValidatorResult messageIsValidExt(const QByteArray &arr, const quint8 &address);
 
 
+
+    static bool isReceivedMessageValidTCP(const QByteArray &arr, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId, quint8 &errorcode, ModbusAnswerList &out);
+
+    static bool isReceivedMessageListValidTCP(const ModbusList &list, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId, quint8 &errorcode, ModbusAnswerList &out);
+
+    static bool isReceivedMessageValidFastCheckTCP(const ModbusList &list, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId, quint8 &errorcode);
+
+    static MessageValidatorResult messageIsValidExtTCP(const QByteArray &arr, const quint8 &address, const quint16 &transactionID, const qint16 &protocolId);
+
+
+
     static QList<qint32> convertTwoRegisters2oneValue(const ModbusAnswerList &l);
+    static QList<qint32> convertTwoRegisters2oneValueBigEndian(const ModbusAnswerList &l);
 
     static QStringList convertTwoRegisters2oneValueStr(const ModbusAnswerList &l, const qreal &multiplier, const int &prec);
+    static QStringList convertTwoRegisters2oneValueStrExt(const ModbusAnswerList &l, const qreal &multiplier, const int &prec, const bool &isBigEndian);
 
     static ModbusRequestParams decodeRequestParams(const QByteArray &readArr);
 
