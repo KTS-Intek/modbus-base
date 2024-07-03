@@ -470,7 +470,7 @@ bool ModbusMessanger::isReceivedMessageValidFastCheckTCP(const ModbusList &list,
     if(!isFunctionCodeGoodExt(list, MODBUS_MODE_TCP, functionCode, haserror))
         return false;
 
-    if(address < 0xFF && address != list.at(0))
+    if(address < 0xFF && address != list.at(6))
         return false;//is not my address
 
 
@@ -530,6 +530,18 @@ QList<qint32> ModbusMessanger::convertTwoRegisters2oneValueBigEndian(const Modbu
 
 //-------------------------------------------------------------------------
 
+QList<qint64> ModbusMessanger::convertFourRegisters2oneValueBigEndian(const ModbusAnswerList &l)
+{
+    QList<qint64> out; // AB, CD, EF, HJ  to ABCDEFHJ
+    for(int i = 0, imax = l.size(); i < imax; i += 4){
+        const qint64 v = (  (qint64)l.at(i) << 48   |  (qint64)l.at(i+1) << 32 | (qint64)l.at(i+2) << 16 | l.at(i + 3));
+        out.append(v);
+    }
+    return out;
+}
+
+//-------------------------------------------------------------------------
+
 QStringList ModbusMessanger::convertTwoRegisters2oneValueStr(const ModbusAnswerList &l, const qreal &multiplier, const int &prec)
 {
     return convertTwoRegisters2oneValueStrExt(l, multiplier, prec, false);
@@ -547,6 +559,20 @@ QStringList ModbusMessanger::convertTwoRegisters2oneValueStrExt(const ModbusAnsw
         out.append(PrettyValues::prettyNumber(r, prec, prec));
     }
     return out;
+}
+
+//-------------------------------------------------------------------------
+
+QByteArray ModbusMessanger::getUTF8FromTheList(const ModbusAnswerList &l, const int &startIndx, const int &len)
+{
+    QByteArray arr;
+//    arr =
+//    int regIndx = 0;
+    for(int i = 0; i < len; i++){
+        arr.append(QByteArray::number(l.at(i + startIndx), 16).rightJustified(4, '0'));
+    }
+    return QByteArray::fromHex(arr).trimmed();
+
 }
 
 

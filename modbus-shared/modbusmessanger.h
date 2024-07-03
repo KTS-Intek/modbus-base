@@ -83,10 +83,15 @@ public:
     static QList<qint32> convertTwoRegisters2oneValue(const ModbusAnswerList &l);
     static QList<qint32> convertTwoRegisters2oneValueBigEndian(const ModbusAnswerList &l);
 
+    static QList<qint64> convertFourRegisters2oneValueBigEndian(const ModbusAnswerList &l);
+
+
     static QStringList convertTwoRegisters2oneValueStr(const ModbusAnswerList &l, const qreal &multiplier, const int &prec);
     static QStringList convertTwoRegisters2oneValueStrExt(const ModbusAnswerList &l, const qreal &multiplier, const int &prec, const bool &isBigEndian);
 
     static ModbusRequestParams decodeRequestParams(const QByteArray &readArr);
+
+    static QByteArray getUTF8FromTheList(const ModbusAnswerList &l, const int &startIndx, const int &len);
 
 };
 
