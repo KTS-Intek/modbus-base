@@ -475,8 +475,8 @@ bool ModbusMessanger::isReceivedMessageValidFastCheckTCP(const ModbusList &list,
 
 
     if(haserror){
-//        errorcode = list.at(2);//error code where to find it in Modbus TCP
-        errorcode = MODBUS_ERROR_ILLEGAL_SLVEDEVFLR;
+//        errorcode = list.at(2);//error code where to find it in Modbus TCP     
+        errorcode = list.isEmpty() ? MODBUS_ERROR_ILLEGAL_SLVEDEVFLR : list.constLast();
         return true;
     }
 

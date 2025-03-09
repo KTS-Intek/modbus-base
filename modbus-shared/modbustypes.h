@@ -25,6 +25,10 @@
 #define MODBUS_ERROR_ACKNOWLEDGE        5 //I need more time to get the data
 #define MODBUS_ERROR_SLAVE_DEVICE_BUSY  6 //please retry later
 
+#define MODBUS_ERROR_GATE_NEGACK        7 // 0x07	Negative Acknowledge
+#define MODBUS_ERROR_GATE_MEMORYPARITY  8 //0x08	Memory Parity Error
+#define MODBUS_ERROR_GATE_PATHUNVLBL    10 //0x0A	Gateway Path Unavailable
+#define MODBUS_ERROR_GATE_TIMEOUT       11 //0x0B	Slave Device Timeout (Gateway reports), No response from slave device.
 
 //my decoder error codes
 #define MODBUS_DECODER_ERROR_HAS_NO_ERRORS      0
